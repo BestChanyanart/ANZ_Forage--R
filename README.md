@@ -1,11 +1,11 @@
 # ANZ_forage
 
-ANZ Virtual Internship is an Internship program on a website Forage, please check out here (https://www.theforage.com/). 
+ANZ Virtual Internship is an Internship program on a website Forage, please check out here (https://www.theforage.com/virtual-internships/prototype/ZLJCsrpkHo9pZBJNY/ANZ-Virtual-Internship). 
 There are 5 tasks in the ANZ data program (2 Mandatory Tasks and 3 Optional Tasks). 
 
 ## Provided dataset 
 
-a synthesised transaction dataset containing 3 months’ worth of transactions for 100 hypothetical customers. It contains purchases, recurring transactions, and salary transactions.
+A synthesised transaction dataset containing 3 months’ worth of transactions for 100 hypothetical customers. It contains purchases, recurring transactions, and salary transactions.
     
 ## 1. Exploratory Data Analysis 
 
