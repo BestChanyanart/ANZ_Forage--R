@@ -1,0 +1,308 @@
+---
+title: "ANZ_Module_2_Predictive Analytics"
+author: "Chanyanart KiattipornOpas"
+date: "11/21/2021"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_float: yes
+always_allow_html: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# About the Task 
+This task focus on **Predictive Analysis** aim to predict **The Annual Salary** of each customers. 
+
+Explore correlations between annual salary and various customer attributes (e.g. age). These attributes could be those that are readily available in the data (e.g. age) or those that you construct or derive yourself (e.g. those relating to purchasing behaviour). Visualise any interesting correlations using a scatter plot.
+
+Build a simple regression model to predict the annual salary for each customer using the attributes you identified above
+
+How accurate is your model? 
+
+For a challenge: build a decision-tree based model to predict salary. Does it perform better? How would you accurately test the performance of this model?
+
+# Preparation 
+
+## 1. Download Library 
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(readxl)
+library(corrplot)
+library(rpart)
+```
+
+## 2. Import Data into Rstudio 
+
+```{r message=FALSE, warning=FALSE}
+transac <- read_csv("ANZ_clean_data.csv")
+```
+
+## 3. Planning for Analysis  
+
+Predict "Annual Salary" (Y) by using these attributes: 
+
+    - Age
+    - Pay Frequency 
+    - Frequency of Sales Transaction
+    - Mean of Sales Transaction across 3 months 
+    - Highest price of Sales Transaction 
+    - Median Balance
+    
+```{r}
+# Create the New List for each Customers by id 
+
+customers <- transac %>% 
+                select(customer_id, age) %>%
+                group_by(customer_id) %>% 
+                distinct() %>%
+                as.data.frame()
+
+head(customers)
+```
+
+# Derive the attributes from Data 
+
+## 1. Salary 
+
+```{r}
+# Extract only PAY/SALARY transaction type. 
+
+pay_salary <- transac %>% 
+    select(customer_id, 
+           txn_description, 
+           date,
+           amount) %>%
+    filter(txn_description == "PAY/SALARY") %>% 
+    group_by(customer_id) %>%
+    as.data.frame()
+
+head(pay_salary)
+```
+
+## 2. Pay Frequency 
+
+```{r}
+pay_salary$date <- as.Date(pay_salary$date) 
+
+# How many time of each customers got paid in this 3 months? 
+
+pay_freq <- pay_salary %>% 
+    group_by(customer_id) %>% 
+    count(amount) %>%
+    as.data.frame()
+
+# rename columns
+colnames(pay_freq)[3] <- "pay_frequent"
+
+tail(pay_freq)
+```
+
+## 3. Annual Salary (Y)
+```{r}
+# Total Salary across 3 months 
+
+total_3m_salary <- pay_freq %>% 
+    mutate(threeM_salary = amount*pay_frequent)
+
+head(total_3m_salary)
+```
+
+Three months is one Quater, so 1 year = 4 quaters
+```{r}
+# Calculate Annual Salary 
+
+annual_salary <- total_3m_salary %>% 
+    mutate(annual_salary = threeM_salary*4)
+
+# rename columns
+colnames(annual_salary)[2] <- "salary"
+
+tail(annual_salary)
+```
+
+
+```{r}
+customers <- customers %>% 
+    inner_join(annual_salary, by = "customer_id")
+
+tail(customers)
+```
+
+## 4. Frequency / Mean / Highest price of Sales Transaction across 3 months 
+
+```{r}
+sale_transac <- transac %>% select(customer_id, 
+                            txn_description, 
+                            amount) %>%
+            filter(txn_description == "POS" |
+                     txn_description == "SALES-POS") %>%
+            group_by(customer_id) %>%
+            summarise(transac_freq = length(customer_id),
+                      sum_amount = sum(amount),
+                      mean_amount = mean(amount),
+                      highest_amount= max(amount))
+
+head(sale_transac)           
+```
+
+```{r}
+customers <- customers %>% 
+    inner_join(sale_transac, by = "customer_id") 
+
+head(customers)
+```
+
+## 5. Balance 
+
+```{r}
+med_balance <- transac %>% select(customer_id, 
+                            balance) %>% 
+                  group_by(customer_id) %>%
+            summarise(median_balance = median(balance)) 
+```
+
+
+```{r}
+customers <- customers %>% 
+    inner_join(med_balance, by = "customer_id") %>%
+    as_tibble()
+
+head(customers)
+```
+
+# Correlation 
+
+```{r}
+cor_matrix <- customers %>% 
+                select(annual_salary, 
+                       age, 
+                       pay_frequent, 
+                       transac_freq, 
+                       mean_amount, 
+                       highest_amount,
+                       median_balance) %>% 
+                cor() 
+```
+
+```{r}
+# Visualize
+
+corrplot(cor_matrix, 
+         method = "color",
+         type="upper",
+         addCoef.col = "black", number.cex = 0.5, 
+         order = "hclust")
+
+```
+
+# Check Complete Observation 
+
+```{r}
+mean(complete.cases(customers))
+```
+1 means all observations has no NULL value. All data are completed. 
+
+# Prediction Model 
+
+```{r}
+# Split data 
+
+set.seed(21) 
+n <- nrow(customers)
+id <- sample(1:n, size = n*0.8) 
+train_data <- customers[id, ]
+test_data <- customers[-id, ]
+
+```
+
+## 1. Linear Regression Model 
+
+### 1.1 Train Model 
+```{r}
+lmModel <- lm(annual_salary ~ age + 
+                              pay_frequent +
+                              transac_freq +
+                              mean_amount +
+                              highest_amount +
+                              median_balance, 
+              data = train_data)
+
+lmModel
+```
+
+### 1.2 Score Model (Prediction) 
+
+```{r}
+p1 <- predict(lmModel, newdata = test_data)
+p1
+```
+
+### 1.3 Evaluate Model 
+
+```{r}
+error1 <- p1 - test_data$annual_salary
+error1
+```
+
+```{r}
+# RMSE 
+
+rmse_test1 <- sqrt(mean(error1**2))
+rmse_test1
+```
+
+## 2. Decision Tree Model 
+
+### 2.1 Train Model 
+```{r}
+rpartModel <- rpart(annual_salary ~ age + 
+                              pay_frequent +
+                              transac_freq +
+                              mean_amount +
+                              highest_amount +
+                              median_balance, 
+              data = train_data)
+
+rpartModel
+```
+
+### 2.2 Score Model (Prediction) 
+
+```{r}
+p2 <- predict(rpartModel, newdata = test_data)
+p2
+```
+
+### 2.3 Evaluate Model 
+
+```{r}
+error2 <- p2 - test_data$annual_salary
+error2
+```
+
+```{r}
+# RMSE 
+
+rmse_test2 <- sqrt(mean(error2**2))
+rmse_test2
+```
+
+```{r}
+## Compare Prediction Model with RMSE 
+cat("RMSE of Linear Regression Model: ", rmse_test1,
+    "\nRMSE of Decision Tree Model: ", rmse_test2)
+```
+
+# Conclusion 
+
+To predict **The Annual Salary** of each customers. We use 6 attributions to predict the annual salary, which are customer's age, the frequent of salary pay, the median balance of customer's bank account, the purchasing behaviors(the frequent of buying, the highest and the average amounts of transactions) in this three months. 
+
+With 2 Prediction Models that are "Linear Regression Model" and "Decision Tree Model". As the result, we found that Decision Tree Model is better than Linear Regression Model for this data. We clearly see that RMSE of Decision Tree Model (RMSE: 20169.15) less than Linear Regression Model (RMSE: 29121.63). 
+
+However RMSE is more than 20000, that indicates an inaccuracy of the model. The variable may not suit to predict the the Annual Salary, More data and More variable are required to develop the reliable model.

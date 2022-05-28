@@ -1,0 +1,755 @@
+---
+title: "ANZ_Module_1_Exploratory Data Analysis"
+author: "Chanyanart KiattipornOpas"
+date: "10/27/2021"
+output:
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_float: yes
+  pdf_document: default
+always_allow_html: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# About Data 
+
+This task is based on a synthesised transaction dataset containing 3 months worth of transactions for **100 hypothetical customers**. It contains purchases, recurring transactions, and salary transactions.
+
+# Data Preparation
+
+## 1. Load Library 
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(readxl)
+library(naniar)
+library(lubridate)
+```
+
+
+## 2. Load dataset in Rstudio 
+```{r message=FALSE, warning=FALSE}
+transac <- read_excel("ANZ synthesised transaction dataset.xlsx")
+```
+
+
+## 3. Preview Dataset 
+
+```{r paged.print=TRUE}
+glimpse(transac)
+```
+There are 23 Columns and 12,043 Observation. 
+
+From the preview of data set above, there are many columns. However, we clearly seen some column shown has many Null value (NA). So, let's check those column first for consideration of dropping NA columns if there are too many NA. 
+
+## 4. Check NA all Columns
+
+```{r}
+# Let find NA position and Percentage by Visualization 
+vis_miss(transac)
+```
+
+```{r paged.print=TRUE}
+# Create check NA function 
+check_na <- function(x) {
+    sum(is.na(x))
+}
+
+# Apply function to all columns
+transac %>% summarise_all(.funs = check_na) 
+
+```
+We can see the same number of missing data **4,326 Null value** in 5 columns which are 
+
+    - card_present_flag 
+    - merchant_id  
+    - merchant_suburb 
+    - merchant_state
+    - merchant_long_lat
+
+We also found the large number of null **(11,160 Null value)** in 2 columns which are 
+
+    - bpay_biller_code
+    - merchant_code
+
+So, Do we need to drop those observations who has NULL value in their information? , Or should we Drop columns instead? 
+
+We've seen from Visualization above, there are 11,160 Null value, however we have total observations are 12,043
+
+```{r}
+# Look at 'bpay_biller_code' column for an example. 
+
+sum(complete.cases(transac$bpay_biller_code)) 
+# only columns of 883 customers are complete 
+
+mean(complete.cases(transac$bpay_biller_code))
+# only 7% completed columns. 
+```
+
+As we seen the 'bpay_biller_code' column above, it look like **7% column completed**. So, if we drop these 2 columns, it will not affect that much. 
+
+```{r}
+# to drop column from dataset 
+transac <- transac %>% select(-bpay_biller_code, 
+                              -merchant_code)
+
+```
+
+However, Do we also need to drop NA value that appeared on 5 columns? There are the same number of NULL value among 5 columns (4,326 observations of 5 columns), we will check again later. 
+
+So, now we still have 12,043 observations, but 21 columns.
+
+# Data Exploration 
+
+## 1. Discrete  Data 
+
+### 1.1 Account and Customer_id 
+
+Account and Customer-id are the number of each customer which use for identifying customers who is owning the bank account. 
+
+```{r}
+# Change Data Type from chr. to factor
+transac$account <- as.factor(transac$account)
+transac$customer_id <- as.factor(transac$customer_id)
+```
+
+```{r}
+# Number of account and customer_id should be equal. 
+length(unique(transac$account))
+length(unique(transac$customer_id))
+```
+
+Both data has 100 unique account and customer id. So, we can assume that the data are sync correctly. We also know that we have 100 customers in this data set. 
+
+### 1.2 Country and Currency
+
+Identifying where the collected data are from, and what currency they used. 
+
+```{r}
+# Check distinct value of each columns with unique()
+unique(transac$country)
+unique(transac$currency)
+```
+
+It look like all observations in these columns are the same value. So, we can drop these columns out because there are not providing additional information for analyzing.
+
+```{r}
+transac <- transac %>% 
+            select(-country, -currency)
+```
+
+Even though we drop them out, we can keep in mind that this data set are collected from customers that are only in "Australia" and using "AUD currency".
+
+Move on to other columns !
+
+### 1.3 Card_present_flag
+
+Card Present means the traditional transaction with the debit/credit cards on the card reader machines. 
+
+Card Not Present means other method of payment, such as Online shopping, buy on website, Recurring or subscription billing, Electronic invoicing, Orders taken over the phone, Payment apps on smart phones.
+
+```{r}
+unique(transac$card_present_flag) 
+```
+There are 2 types which shown ( 0 / 1) and NA value.  So, we should convert Numeric type to Factor type
+
+```{r}
+# Change Data Type from Numerical to Factor
+transac$card_present_flag <-  as.factor(transac$card_present_flag)
+```
+
+```{r}
+# To look at the proportion of 0  and  1 
+card <- transac %>% count(card_present_flag)
+
+ggplot(card,aes(card_present_flag, n)) + 
+    geom_col(na.rm = FALSE) +
+    geom_text(aes(label = n),
+              size = 4)
+```
+
+We knew that main customers was identified as 1, a triple than the customer is defined as 0. But there are a big size of NA which comes to the second. 
+
+### 1.4 txn_description
+
+```{r}
+# check distinct value of txn_description 
+unique(transac$txn_description)
+```
+
+```{r}
+# Change Data Type from chr. to factor
+transac$txn_description <-
+    as.factor(transac$txn_description)
+```
+
+```{r}
+transac %>% count(txn_description) %>% 
+  ggplot(aes(txn_description,n)) +
+      geom_col(na.rm = FALSE) +
+      geom_text(aes(label = n),
+                    size = 3) +
+            theme(axis.text.x = element_text(angle = 45,
+                                            vjust = 0.5,
+                                              size = 6))
+```
+
+There are 6 usage types of transaction(txn) on Bank Account. 
+
+- **POS and SALES-POS**  The quantity of this 2 types quite similar. SALSE-POSE is a bit higher than POS 
+
+A point of sale (POS) is a place where a customer executes the payment for goods or services and where sales taxes may become payable. A POS transaction may occur in person or online, with receipts generated either in print or electronically.
+
+- **Payment method** is the third of transaction method.
+- **Inter Bank** and **Pay/Salary** are relatively similar. 
+- The least quantity of transaction method is **Phone Bank**
+
+```{r}
+# Add on 2 columns into plot 
+
+txn_card <- transac %>% 
+            count(txn_description, card_present_flag)  
+
+ggplot(txn_card, aes(txn_description,n,
+                    fill = card_present_flag)) +
+      geom_col(na.rm = FALSE) +
+      geom_text(aes(label = n),
+                    size = 3) +
+            theme(axis.text.x = element_text(angle = 45,
+                                            vjust = 0.5,
+                                              size = 6))
+```
+
+**POS** and **SALES-POS** are only two columns that show the amount of customer use the card or paid without card while doing their transactions on the stores. 
+
+Null Value(NA) are from 4 transaction types that are **Inter Bank, Pay/Salary, Payment and Phone Bank**. And We understand that those type no need to have information of card_present-flag columns (Null) because they do not use the credit card to buy the products. 
+
+**So, Back to the question "Should we drop NA value on any rows that has NA in the row?"**
+
+The answer should be "No" - because it may give some insight from data that come from these transactions. 
+
+We will keep them as NA for Null value
+
+### 1.5 Status
+
+```{r}
+transac %>% count(status) 
+```
+```{r}
+status_txn_card <- transac %>% 
+            count(status, 
+                  txn_description, 
+                  card_present_flag)  
+
+ggplot(status_txn_card, aes(txn_description,n,
+                    fill = card_present_flag, 
+                    color = status)) +
+      geom_col(na.rm = FALSE) +
+    scale_color_brewer(palette = "Dark2") +
+    scale_fill_brewer(palette = "Paired") +
+      geom_text(aes(label = n),
+                    size = 3) +
+            theme(axis.text.x = element_text(angle = 45,
+                                            vjust = 0.5,
+                                              size = 6))
+```
+
+Status "Authorized" only show in **POS and SALES-POS"** payment method. Apart from those two are "Posted" status.
+
+### 1.6 Movement 
+
+```{r}
+transac$movement <- as.factor(transac$movement)
+transac %>% count(movement)
+```
+"Debit" showed far out number of usage than "Credit"
+
+```{r}
+movement_txn <- transac %>% 
+            count(movement, 
+                  txn_description)
+
+ggplot(movement_txn, aes(txn_description,n,
+                    fill = movement)) +
+      geom_col(na.rm = FALSE) +
+      geom_text(aes(label = n),
+                    size = 3) +
+            theme(axis.text.x = element_text(angle = 45,
+                                            vjust = 0.5,
+                                              size = 6))
+```
+
+Only Pay/Salary Method showed the movement of "Credit", Others are "Debit" 
+
+### 1.7 Merchant_States
+
+```{r}
+transac$merchant_state <- as.factor(transac$merchant_state)
+
+# Check State 
+unique(transac$merchant_state)
+
+```
+
+There are 8 states, without duplicated or misspelling
+
+```{r paged.print=TRUE}
+states <- transac %>% count(merchant_state) %>%
+    arrange(desc(n))
+
+states
+```
+
+```{r paged.print=TRUE}
+ggplot(states, aes(merchant_state, n)) + 
+    geom_col() + 
+    geom_text(aes(label = n),
+              size = 3)
+```
+
+### 1.8 Merchant_Suburb 
+
+```{r}
+# Check Merchant_Suburb (Not include NA)
+length(unique(na.omit(transac$merchant_suburb)))
+```
+There are 1,609 suburbs.
+
+```{r}
+transac %>% count(merchant_suburb) %>% 
+    arrange(desc(n)) %>% 
+    head(10)
+```
+
+Melbourne (255) and Sydney(233) are top two of Merchant Suburbs where occurred transaction which far out number from others. 
+
+### 1.9 Gender
+
+```{r message=FALSE, warning=FALSE, paged.print=TRUE}
+
+transac$gender <- as.factor(transac$gender)
+
+# Extract unique customer_id 
+u_id <- transac %>% group_by(customer_id, gender) %>%
+            summarize(n_count = n_distinct(customer_id))
+
+# count Gender
+u_id %>% as.data.frame() %>% count(gender)
+
+```
+Male customers are higher than Female customers. 
+
+## 2. Date Manipulation 
+
+### 2.1 Start Date and End Date
+```{r}
+min(transac$date)
+max(transac$date)
+```
+
+Data is collected from 01-08-2018 to 31-10-2018 
+
+```{r}
+transac$date <- as.Date(transac$date)
+date_freq <- transac %>% count(date) %>% arrange(desc(n))
+
+p_date_freq <- ggplot(date_freq, aes(date, n)) +
+    geom_col() +
+    labs(x = "Day", 
+         y = "Number of Transaction", 
+         title = "Transaction over time") + 
+    scale_x_date(breaks = "1 month") +
+    theme(axis.text.x = element_text(angle = 90,
+                                     vjust = 0.5))
+p_date_freq
+```
+
+It look like there are a pattern of a peak days. But on the graph showed there is missing data in August, so let look on which day?
+
+### 2.2 Missing Date
+
+```{r}
+august <- transac %>% filter(date >= "2018-08-01" &
+                             date <= "2018-08-31") %>%
+           count(date) 
+
+p_august <- ggplot(august, aes(date, n)) +
+    geom_col() +
+    labs(x = "Day", 
+         y = "Number of Transaction", 
+         title = "Transaction in August") + 
+    scale_x_date(breaks = "1 day") +
+    theme(axis.text.x = element_text(angle = 90,
+                                     vjust = 0.5))
+p_august
+```
+
+There are no transaction data of "2018-08-16" 
+
+Then, let's check Peak days from top 10 transaction dates. 
+
+### 2.3 Peak Date
+
+```{r}
+date_freq %>% head(10)
+```
+Top 10 of highest transaction date.
+
+```{r echo=TRUE}
+wday("2018-09-29", label = TRUE)  # Sat
+wday("2018-09-01", label = TRUE)  # Sat
+wday("2018-09-28", label = TRUE)  # Fri
+wday("2018-10-05", label = TRUE)  # Fri
+wday("2018-08-17", label = TRUE)  # Fri
+wday("2018-09-21", label = TRUE)  # Fri
+wday("2018-09-22", label = TRUE)  # Sat
+wday("2018-10-20", label = TRUE)  # Sat
+wday("2018-08-18", label = TRUE)  # Sat
+wday("2018-08-31", label = TRUE)  # Fri
+```
+Peak day of transaction are Friday and Saturday.
+
+### 2.4 Create Day_of_the_week Columns
+
+```{r}
+transac$date <- as.POSIXct(transac$date ,
+                      format = "%Y-%m-%d")
+
+transac$day_of_week <- wday(transac$date, label = TRUE)
+```
+
+```{r}
+transac %>% 
+  count(day_of_week) %>% 
+  arrange(desc(n)) %>% 
+  ggplot(aes(day_of_week, n)) +
+  geom_col() +
+  geom_text(aes(label = n),
+              size = 3)
+```
+
+Most transaction are on Friday and Wednesday  
+
+## 3. Time Extraction 
+
+Let's extract the time from "extraction" column 
+```{r}
+# Replace the T with blank space to separate date&time
+
+transac$extraction <- str_replace_all(transac$extraction,
+                                      "T", " ")
+```
+
+```{r}
+# Remove the .000+0000 from date&time
+transac$extraction <- str_replace_all(transac$extraction,
+                                "[.][0]++[+][0]++", " ")
+```
+
+To Extract only time
+```{r}
+# Change Char to Date type with identify date format 
+transac$extraction <- as.POSIXct(transac$extraction,
+                      format = "%Y-%m-%d %H:%M:%S")
+
+# Create new column and extract only time 
+transac$time <- format(transac$extraction,
+                       format = "%H:%M:%S")
+
+# Extract only hours
+transac$hour <- format(transac$extraction, format = "%H")
+
+# Extract only month 
+transac$month <- format(transac$extraction, format = "%m")
+
+# Delete extraction column 
+transac <- transac %>% select(-extraction)
+```
+
+### 3.1 Peak Time of transaction 
+
+```{r}
+# Plot graph to find the Peak Time of Transaction.
+transac$hour <-  as.factor(transac$hour) 
+
+ggplot(transac,aes(hour)) + 
+    geom_bar()
+```
+
+We found that during 09:00 - 10:00 is the peak time of Transaction across the states. 
+
+### 3.2 Peak Time across 3 months
+
+```{r}
+# Are there any different of Peak Time in each months?
+
+transac$month <-  factor(transac$month,
+                         levels = c("08","09","10"),
+                         labels = c("August",
+                                    "September",
+                                    "October")) 
+
+```
+
+```{r}
+byMonth <- transac %>% select(hour, month) %>% 
+                        group_by(month) %>% 
+                        count(hour)
+```
+
+```{r}
+ggplot(byMonth, aes(hour,n, fill=month)) +
+    geom_col(position = "dodge") 
+```
+
+There is a same pattern of Peak Time across 3 months. Example: A peak Time 9:00 am. of transaction amount are more than 300+ in those three month. 
+
+## 4. Location data
+
+Separate Lat and Long 
+```{r}
+# To separate Lat - Long of customers 
+transac$long_lat <- as.character(transac$long_lat)
+
+transac <- transac %>% separate(long_lat, 
+                     into = c("long_cust", "lat_cust"),
+                     sep = " ", fill = "right")
+```
+
+```{r}
+# To separate Lat - Long of merchant 
+
+transac$merchant_long_lat <-
+    as.character(transac$merchant_long_lat)
+
+transac <- transac %>% separate(merchant_long_lat, 
+                     into = c("long_merch", "lat_merch"),
+                     sep = " ", fill = "right")
+```
+
+
+## 5. Continuous Data 
+There are 3 columns of continuous data which are 
+    
+    - Balance
+    - Amount 
+    - Age 
+
+This data are from ANZ Bank of Australia, which Bank account also keep individual money. So, there are a large range of **Balance and Amount columns**, which depends on each individual customers. 
+
+### 5.1 Balance
+
+```{r}
+summary(transac$balance)
+```
+
+It is clear that there are a big range of data, And Mean is far higher than Median. But it can understandable because Balance will show the remaining after transactions, so Balance data always recount. 
+
+Just plot to look into what position of data look like. 
+
+```{r}
+# boxplot to visualize outlier
+ggplot(transac, aes(balance)) +
+    geom_boxplot() +
+    coord_flip()
+```
+
+We can see the people who has high of Balance column after their transaction, by checking Outlier.
+
+```{r}
+# Which observation are outliers? 
+out_balance <- boxplot.stats(transac$balance)$out
+out_balance_iden <- which(transac$balance 
+                         %in% c(out_balance))
+transac[out_balance_iden, ]
+```
+
+### 5.2 Amount 
+
+```{r}
+summary(transac$amount)
+```
+
+Mean(187.93) is really far from Median(29) because the MAx number is really high (8,835.98). 
+
+```{r}
+# boxplot to visualize outlier
+ggplot(transac, aes(amount)) +
+    geom_boxplot() +
+    coord_flip()
+```
+
+
+```{r}
+out_amount <- boxplot.stats(transac$amount)$out
+out_amount_iden <- which(transac$amount 
+                         %in% c(out_amount))
+transac[out_amount_iden, ] %>% arrange(desc(amount))
+```
+
+We found that the high amount transactions are from PAY/SALARY which affect the range of data in this amount column. 
+
+They got the Salary through this Bank account, so this is the reason why there are a big range of number. 
+
+```{r}
+ggplot(transac, aes(txn_description, amount)) + 
+  geom_col() +
+  theme(axis.text.x = element_text(angle = 90,
+                                   vjust = 0.5))
+```
+
+### 5.3 Age
+
+```{r}
+summary(transac$age)
+```
+
+An average age of customers who use ANZ Bank is  30.58. 
+
+```{r}
+ggplot(transac, aes(age)) +
+    geom_boxplot() +
+    coord_flip()
+```
+
+
+```{r}
+out_age <- boxplot.stats(transac$age)$out
+out_age_iden <- which(transac$age %in% c(out_age))
+transac[out_age_iden, ] %>% 
+  arrange(desc(age))
+```
+
+From the box plot and table above show 3 customers who is the outliers Andrew[78y.], Tyler[69y.] and Mary[64 y.]
+
+```{r}
+ggplot(transac, aes(age)) +
+    geom_histogram(bins = 30)
+```
+
+# Data Analysis 
+
+## 1. Amount by Merchant_States and Transaction Type 
+
+```{r}
+ggplot(transac, aes(merchant_state, amount,
+                    fill = txn_description)) +
+  geom_col()
+```
+NA value includes many type of transaction. So, we will exclude them first and focus on states. 
+
+```{r}
+# filter out NA 
+filter_na_state <- transac %>%  
+                   drop_na(merchant_state) 
+
+# Plotting Chart 
+ggplot(filter_na_state, aes(merchant_state, amount,
+                    fill = txn_description)) +
+  geom_col() 
+```
+Top 3 Sates are NSW, VIC and QLD of POS and SALE-POS 
+
+## 2. Amount by Age and Transaction Type
+
+```{r}
+# Plotting Chart 
+ggplot(transac, aes(age, amount,
+                    color = txn_description)) +
+  geom_point() 
+```
+
+PAY/SALARY is the large amount of transaction that far higher than other types. So, we will filter out the PAY/SALARY types and Outlier of age.  
+
+```{r}
+# filter Age outlier and Pay/Salary 
+
+filter_outAge_salary <- transac %>% 
+  filter(txn_description != "PAY/SALARY" & age < 60) 
+```
+
+```{r}
+ggplot(filter_outAge_salary, aes(age, amount,
+                    color = txn_description)) +
+  geom_point()
+```
+Most transaction are not over 2,000 AUD. 
+
+## 3. Age x Amount 
+
+```{r message=FALSE, warning=FALSE}
+ggplot(transac, aes(age, amount)) +
+  geom_smooth()  
+```
+
+The pattern of age and amount. 
+
+## 4. Day of the Week and Transaction Method 
+
+```{r}
+ggplot(transac, aes(day_of_week, amount,
+                    fill = txn_description)) +
+  geom_col()
+```
+Pay/Salary proceed only weekday (Monday - Friday), No proceeding on Saturday or Sunday.  
+
+
+Salary Transaction is the large proportion, so we should create new variable to exclude this for analysis. 
+```{r}
+# Exclude Transaction type of "PAY/SALARY"
+filter_out_salary <- transac %>% 
+  filter(txn_description != "PAY/SALARY")
+```
+
+Filter to get only PAY/SALARY Method.
+```{r}
+# Filter only Transaction type of "PAY/SALARY"
+filter_in_salary <- transac %>% 
+  filter(txn_description == "PAY/SALARY")
+```
+
+
+```{r}
+ggplot(filter_out_salary, aes(day_of_week, amount,
+                    fill = txn_description)) +
+  geom_col()
+```
+
+Excluding PAY/SALARY, There are relative proportion across weekday. POS, SALE-POS and PAYMENT are top 3 transaction types. 
+
+## 4. hour and Transaction Method 
+
+```{r}
+ggplot(transac, aes(hour, amount,
+                    fill = txn_description)) +
+  geom_col()
+```
+
+PAY/SALARY shows high proportion in specific time, so we will close up look at those time. 
+
+```{r}
+ggplot(filter_in_salary, aes(hour, txn_description)) +
+  geom_col()
+```
+
+The Salary payment proceed between 11:00 - 17:00. 
+
+
+# Conclusion 
+
+Data contains the transactions of 100 customers who has a Bank account with ANZ. Customer Age between 18 - 78 year old in Australia across 8 states 1609 Suburbs.  
+
+The Data collected only 3 months from 2018-08-01 to 2018-10-31, with one missing date is "2018-08-16". The number transaction is high number every Friday and Saturday, and transaction time during 09:00 - 10:00 is the peak time of Transaction across the states (more than 300+ transactions every months). 
+ 
+There are 6 Transaction types are POS, SALE_POS, PAY/SALARY, PAYMENT, INTER BANK, PHONE BANK. There are a large quantity of POS (3,783) and SALE-POS(3,934) transactions with relative equally. The top 3 states of POS, and SALE-POS transaction are NSW, VIC and QLD.
+ 
+However, the large amount of transactions come from PAY/SALARY transaction types which customers receives the salary through the ANZ Bank account. We clearly see that this type of transactions only proceed on weekday between 11:00 - 17:00. 
+
+# Save and Export data from Rstudio 
+
+```{r}
+write.csv(transac, "ANZ_clean_data.csv")
+```
+
