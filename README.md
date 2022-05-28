@@ -10,7 +10,7 @@ a synthesised transaction dataset containing 3 months’ worth of transactions f
 ## 1. Exploratory Data Analysis 
 
 Task requires 
-- Load the transaction dataset below into an analysis tool of your choice (Excel, R, SAS, Tableau, or similar)
+- Load the transaction dataset into an analysis tool of your choice (Excel, R, SAS, Tableau, or similar)
     
 - Start by doing some basic checks – are there any data issues? Does the data need to be cleaned?
     
