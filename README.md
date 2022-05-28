@@ -10,10 +10,13 @@ a synthesised transaction dataset containing 3 months’ worth of transactions f
 ## 1. Exploratory Data Analysis 
 
 Task requires 
-    - Load the transaction dataset below into an analysis tool of your choice (Excel, R, SAS, Tableau, or similar)
-    - Start by doing some basic checks – are there any data issues? Does the data need to be cleaned?
-    - Gather some interesting overall insights about the data. For example -- what is the average transaction amount? How many transactions do customers make each month, on average?
-    - Segment the dataset by transaction date and time. Visualise transaction volume and spending over the course of an average day or week. Consider the effect of any outliers that may distort your analysis.
+- Load the transaction dataset below into an analysis tool of your choice (Excel, R, SAS, Tableau, or similar)
+    
+- Start by doing some basic checks – are there any data issues? Does the data need to be cleaned?
+    
+- Gather some interesting overall insights about the data. For example -- what is the average transaction amount? How many transactions do customers make each month, on average?
+    
+- Segment the dataset by transaction date and time. Visualise transaction volume and spending over the course of an average day or week. Consider the effect of any outliers that may distort your analysis.
 
 **Result:  https://htmlpreview.github.io/?https://github.com/BestChanyanart/ANZ_forage/blob/main/ANZ_Module_1_Exploratory-Data-Analysis.html**
 
