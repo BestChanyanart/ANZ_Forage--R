@@ -41,8 +41,8 @@ Task requires
 - To perform the following transformation steps using the synthetic transaction file by using PySpark DataFrame. Output the results to a local file.
 Project only the records where 
 
-    > Status=authorized AND card_present_flag=0
-    > Split the long_lat and merchant_long_lat fields into long, lat and merch_long, merch_lat fields
-    > Output the data as a CSV file
+    - Status=authorized AND card_present_flag=0
+    - Split the long_lat and merchant_long_lat fields into long, lat and merch_long, merch_lat fields
+    - Output the data as a CSV file
 
 **Result: https://colab.research.google.com/github/BestChanyanart/ANZ_Forage--R/blob/main/ANZ_Module_3_Exploring_Big_Data_with_PySpark_.ipynb**
